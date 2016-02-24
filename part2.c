@@ -1,33 +1,43 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 typedef struct vertice{
     double x;
     double y;
+    int isNull;
 }Vertice;
 
+
+void set_null(Vertice **a)
+{
+    *a = NULL;
+}
 
 Vertice* parse(char* buffer){
     int memberCount=0;
     int i;
-    while(buffer[i]!=NULL){
+    while(buffer[i]!='\0'){
         if(buffer[i] == '(') memberCount++;
         i++;
     }
-    Vertice* verticeArray = malloc(memberCount*sizeof(struct vertice));
+    Vertice* verticeArray = malloc( (memberCount+1) *sizeof(struct vertice));
     
-    int pointer=1;
-    
-    for(int i=0; i< memberCount;i++){
-        char doubleBuffer[100];
-        int initialPointer = pointer;
+    int pointer=0;
+    for(i=0; i< memberCount;i++){
         
+        char doubleBuffer[100];
+        while( !isdigit(buffer[pointer]) && buffer[pointer] != '-') pointer++; // seek to first digit or minus sign
+        
+        
+        int initialPointer = pointer;
         while(buffer[pointer]!= ','){ // x coordinate
             doubleBuffer[pointer-initialPointer] = buffer[pointer];
             pointer++;
         }
-        pointer+=2; // move past char ','
+        
+        while( !isdigit(buffer[pointer]) && buffer[pointer] != '-') pointer++; // seek to next digit or minus sign
         
         
         char doubleBuffer2[100];
@@ -37,20 +47,54 @@ Vertice* parse(char* buffer){
             pointer++;
         }
         
-        while(buffer[pointer]!='(') pointer++; // seek to next '('
         
-        pointer++; // skip ( to next number)
         
         Vertice* new = malloc(sizeof(struct vertice));
         new->x = atof(doubleBuffer);
         new->y = atof(doubleBuffer2);
-        
+        new->isNull =0;
         verticeArray[i] = *new;
     }
+    
+    free(buffer);
+    verticeArray[i+1].x=0, verticeArray[i+1].y=0, verticeArray[i+1].isNull=1;
     
     return verticeArray;
 }
 
+
+int get_line_intersection(double p0_x, double p0_y, double p1_x, double p1_y, double p2_x, double p2_y, double p3_x, double p3_y)
+{
+    double s1_x, s1_y, s2_x, s2_y;
+    s1_x = p1_x - p0_x;     s1_y = p1_y - p0_y;
+    s2_x = p3_x - p2_x;     s2_y = p3_y - p2_y;
+
+    double s, t;
+    s = (-s1_y * (p0_x - p2_x) + s1_x * (p0_y - p2_y)) / (-s2_x * s1_y + s1_x * s2_y);
+    t = ( s2_x * (p0_y - p2_y) - s2_y * (p0_x - p2_x)) / (-s2_x * s1_y + s1_x * s2_y);
+
+    if (s >= 0 && s <= 1 && t >= 0 && t <= 1)
+    {
+        // Collision detected
+        return 1;
+    }
+    return 0; // No collision
+}
+
+
+int is_inside(Vertice* guard, Vertice* polygon){
+    // cast a ray vertically downward from guard
+    // as a line segment from guard to a very large negative vertex
+    
+    Vertice* temp = malloc(sizeof(struct vertice));
+    temp->x = guard->x;
+    temp->y = -999999;
+    
+    int intersectCount =0;
+    
+    
+    
+}
 
 int main(){
     FILE* fp;
@@ -60,26 +104,41 @@ int main(){
         fgets(buffer, 25000, fp);
         
         puts(buffer);
-        int i =3;
+        
+        int i =0;
+        while(buffer[i] != '(') i++; // seek first parenth        
         
         char* polygon = malloc(20000*sizeof(char));
+        
+        int starter = i;
         while(buffer[i] != ';'){
-             polygon[i] = buffer[i];
+             polygon[i-starter] = buffer[i];
              i++;
         }
+        polygon[i-starter]='\0';
         
-        polygon[i+1]='\0';
         
         puts(polygon);
         
-        i+= 2;
+        while( buffer[i] != '(')i++; // seek to next parenth
+        
+        starter = i;
         char* guard = malloc(8000*sizeof(char));
         while(buffer[i] != '\n'){
-                guard[i] = buffer[i];
+                guard[i-starter] = buffer[i];
                 i++;
         }
-        guard[i+1]='\0';
+        guard[i-starter]='\0';
+        puts(guard);
         free(buffer);
+        
+        Vertice* polygonArray = parse(polygon);
+        Vertice* guardArray = parse(guard);
+               
+        printf("%f\n", guardArray[1].x);
+        
+        
+                
          
     } 
 }
