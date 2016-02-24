@@ -57,10 +57,10 @@ int get_line_intersection(double p0_x, double p0_y, double p1_x, double p1_y, do
 
     // special case
     double case1, case2, case3, case4;
-    case1 = abs(p0_x-p2_x) + abs(p0_y-p2_y);
-    case2 = abs(p0_x-p3_x) + abs(p0_y-p3_y);
-    case3 = abs(p1_x-p2_x) + abs(p1_y-p2_y);
-    case4 = abs(p1_x-p3_x) + abs(p1_y-p3_y);
+    case1 = fabs(p0_x-p2_x) + fabs(p0_y-p2_y);
+    case2 = fabs(p0_x-p3_x) + fabs(p0_y-p3_y);
+    case3 = fabs(p1_x-p2_x) + fabs(p1_y-p2_y);
+    case4 = fabs(p1_x-p3_x) + fabs(p1_y-p3_y);
     
     if(case1<2*EPSI || case2<2*EPSI){
         if(i_x != NULL)*i_x = p0_x;
@@ -98,7 +98,7 @@ int get_line_intersection(double p0_x, double p0_y, double p1_x, double p1_y, do
 
 
 int is_inside(Vertice* guard, Vertice* polygon){
-    //para: guard : pointer to guard
+    //paraemter: guard : pointer to guard
     //      polygon: pointer to array of polygon
     
     // cast a ray vertically downward from guard
@@ -111,6 +111,8 @@ int is_inside(Vertice* guard, Vertice* polygon){
     
     int vertexIndex = 0;
     while(polygon[vertexIndex+1].isNull ==0){
+        
+        if (fabs(guard->x - polygon[vertexIndex].x) <EPSI && fabs(guard->y - polygon[vertexIndex].y) < EPSI ) return 1;
         // Iterate through all of edges of polygon
         // Check for collision with the downward ray
         int isIntersect = get_line_intersection(guard->x, guard->y, temp->x, temp->y, polygon[vertexIndex].x, polygon[vertexIndex].y, polygon[vertexIndex+1].x, polygon[vertexIndex+1].y, NULL, NULL);
@@ -143,7 +145,7 @@ Vertice* parse(char* buffer){
     int pointer=0;
     for(i=0; i< memberCount;i++){
         
-        char doubleBuffer[100];
+        char doubleBuffer[100]={0};
         while( !isdigit(buffer[pointer]) && buffer[pointer] != '-') pointer++; // seek to first digit or minus sign
         
         
@@ -156,7 +158,7 @@ Vertice* parse(char* buffer){
         while( !isdigit(buffer[pointer]) && buffer[pointer] != '-') pointer++; // seek to next digit or minus sign
         
         
-        char doubleBuffer2[100];
+        char doubleBuffer2[100]={0};
         initialPointer = pointer;
         while(buffer[pointer]!=')'){ // y coordinate
             doubleBuffer2[pointer-initialPointer] = buffer[pointer];
@@ -182,7 +184,7 @@ Vertice* parse(char* buffer){
 int main(){
     FILE* fp;
     fp = fopen("check.pol", "r");
-    for(int main=0; main<2; main++){
+    for(int main=0; main<4; main++){
         char* buffer = malloc(25000*sizeof(char));
         fgets(buffer, 25000, fp);
         
@@ -220,8 +222,9 @@ int main(){
         
         int k=0;
         while (guardArray[k].isNull==0){
-            printf("guard %d inside: %d\n", k, is_inside(&guardArray[k], polygonArray));
+            printf("guard %d: %f, %f inside: %d\n", k,guardArray[k].x, guardArray[k].y, is_inside(&guardArray[k], polygonArray));
             k++;
         }
+        double a, b;
     } 
 }
