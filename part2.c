@@ -112,7 +112,7 @@ int is_inside(Vertice* guard, Vertice* polygon){
     int vertexIndex = 0;
     while(polygon[vertexIndex+1].isNull ==0){
         
-        if (fabs(guard->x - polygon[vertexIndex].x) <EPSI && fabs(guard->y - polygon[vertexIndex].y) < EPSI ) return 1;
+        if (fabs(guard->x - polygon[vertexIndex].x) <EPSI && fabs(guard->y - polygon[vertexIndex].y) < EPSI ) return -1;
         // Iterate through all of edges of polygon
         // Check for collision with the downward ray
         int isIntersect = get_line_intersection(guard->x, guard->y, temp->x, temp->y, polygon[vertexIndex].x, polygon[vertexIndex].y, polygon[vertexIndex+1].x, polygon[vertexIndex+1].y, NULL, NULL);
@@ -122,6 +122,9 @@ int is_inside(Vertice* guard, Vertice* polygon){
     }
     
     // the last edge is from last vertex to first vertex
+    
+
+    if (fabs(guard->x - polygon[vertexIndex].x) <EPSI && fabs(guard->y - polygon[vertexIndex].y) < EPSI ) return -1;
     int isIntersect = get_line_intersection(guard->x, guard->y, temp->x, temp->y, polygon[vertexIndex].x, polygon[vertexIndex].y, polygon[0].x, polygon[0].y, NULL, NULL);
     if(isIntersect==1)intersectCount++;
     
@@ -219,8 +222,9 @@ int main(){
         Vertice* polygonArray = parse(polygon);
         Vertice* guardArray = parse(guard);
         int k=0;
+        printf("main: %d\n", main);
         while (guardArray[k].isNull==0){
-            printf("guard %d: inside: %d\n",k, is_inside(&guardArray[k], polygonArray));
+            printf("guard %d : inside: %d\n",k, is_inside(&guardArray[k], polygonArray));
             k++;
         }
         double a, b;
