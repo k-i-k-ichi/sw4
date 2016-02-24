@@ -184,16 +184,15 @@ Vertice* parse(char* buffer){
 int main(){
     FILE* fp;
     fp = fopen("check.pol", "r");
-    for(int main=0; main<4; main++){
-        char* buffer = malloc(25000*sizeof(char));
-        fgets(buffer, 25000, fp);
+    for(int main=0; main<20; main++){
+        char* buffer = calloc(30000,sizeof(char));
+        fgets(buffer, 30000, fp);
         
-        puts(buffer);
         
         int i =0;
         while(buffer[i] != '(') i++; // seek first parenth        
         
-        char* polygon = malloc(20000*sizeof(char));
+        char* polygon = calloc(20000,sizeof(char));
         
         int starter = i;
         while(buffer[i] != ';'){
@@ -203,28 +202,29 @@ int main(){
         polygon[i-starter]='\0';
         
         
-        puts(polygon);
+        
         
         while( buffer[i] != '(')i++; // seek to next parent(
         
         starter = i;
-        char* guard = malloc(8000*sizeof(char));
-        while(buffer[i] != '\n'){
+        char* guard = calloc(10000,sizeof(char));
+        while(buffer[i] != '\n' && buffer[i] != '\0'){
                 guard[i-starter] = buffer[i];
                 i++;
         }
         guard[i-starter]='\0';
-        puts(guard);
+        
         free(buffer);
         
         Vertice* polygonArray = parse(polygon);
         Vertice* guardArray = parse(guard);
-        
         int k=0;
         while (guardArray[k].isNull==0){
-            printf("guard %d: %f, %f inside: %d\n", k,guardArray[k].x, guardArray[k].y, is_inside(&guardArray[k], polygonArray));
+            printf("guard %d: inside: %d\n",k, is_inside(&guardArray[k], polygonArray));
             k++;
         }
         double a, b;
+        free(polygonArray);
+        free(guardArray);
     } 
 }
