@@ -10,6 +10,7 @@ typedef struct vertice{
     double x;
     double y;
     int isNull;
+    double angle_to_guard;
 }Vertice;
 
 
@@ -24,16 +25,12 @@ typedef struct edge{
     struct edge* nextEdge;
     Vertice* a;
     Vertice* b;
-}
-    
-    
-   
+}Edge;
 
-
-double polar_angle(double p0_x, double p0_y, double p1_x, double p1_y){
+double polar_angle(double p1_x, double p1_y, double p2_x, double p2_y){
     double deltaY = p2_y - p1_y;
     double deltaX = p2_x - p1_x;
-    double polar_angle = atan2(deltaY/deltaX);
+    double polar_angle = atan2(deltaY, deltaX);
     return polar_angle;
 }
 
@@ -44,7 +41,7 @@ int md_comparator(const void *v1, const void *v2)
 {
     const Vertice* p1 = (Vertice* )v1;
     const Vertice* p2 = (Vertice* )v2;
-    if ((p1->angle_to_guard - p2->angle_to_guard) < EPSI) // epsilon equality
+    if ((p1->angle_to_guard - p2->angle_to_guard) < -EPSI) // epsilon equality
         return -1;
     else if ((p1->angle_to_guard - p2->angle_to_guard) > EPSI)
         return +1;
@@ -57,6 +54,26 @@ int md_comparator(const void *v1, const void *v2)
 
 int get_line_intersection(double p0_x, double p0_y, double p1_x, double p1_y, double p2_x, double p2_y, double p3_x, double p3_y, double* i_x, double* i_y)
 {
+
+    // special case
+    double case1, case2, case3, case4;
+    case1 = abs(p0_x-p2_x) + abs(p0_y-p2_y);
+    case2 = abs(p0_x-p3_x) + abs(p0_y-p3_y);
+    case3 = abs(p1_x-p2_x) + abs(p1_y-p2_y);
+    case4 = abs(p1_x-p3_x) + abs(p1_y-p3_y);
+    
+    if(case1<2*EPSI || case2<2*EPSI){
+        if(i_x != NULL)*i_x = p0_x;
+        return 1;
+    }
+    
+    if(case3<2*EPSI || case4<2*EPSI){
+        if(i_x != NULL)*i_x = p1_x;
+        return 1;
+    }
+    
+        
+    
     double s1_x, s1_y, s2_x, s2_y;
     s1_x = p1_x - p0_x;     s1_y = p1_y - p0_y;
     s2_x = p3_x - p2_x;     s2_y = p3_y - p2_y;
@@ -81,6 +98,9 @@ int get_line_intersection(double p0_x, double p0_y, double p1_x, double p1_y, do
 
 
 int is_inside(Vertice* guard, Vertice* polygon){
+    //para: guard : pointer to guard
+    //      polygon: pointer to array of polygon
+    
     // cast a ray vertically downward from guard
     // as a line segment from guard to a very large negative vertex 
     Vertice* temp = malloc(sizeof(struct vertice));
@@ -90,10 +110,7 @@ int is_inside(Vertice* guard, Vertice* polygon){
     int intersectCount =0;
     
     int vertexIndex = 0;
-    while(polygon[vertexIndex+1].isNull ==0){ 
-        // If guard stand directly on top of vertex
-        if(guard->x -
-    
+    while(polygon[vertexIndex+1].isNull ==0){
         // Iterate through all of edges of polygon
         // Check for collision with the downward ray
         int isIntersect = get_line_intersection(guard->x, guard->y, temp->x, temp->y, polygon[vertexIndex].x, polygon[vertexIndex].y, polygon[vertexIndex+1].x, polygon[vertexIndex+1].y, NULL, NULL);
@@ -105,6 +122,11 @@ int is_inside(Vertice* guard, Vertice* polygon){
     // the last edge is from last vertex to first vertex
     int isIntersect = get_line_intersection(guard->x, guard->y, temp->x, temp->y, polygon[vertexIndex].x, polygon[vertexIndex].y, polygon[0].x, polygon[0].y, NULL, NULL);
     if(isIntersect==1)intersectCount++;
+    
+    free(temp);
+    
+    if(intersectCount %2 ==0) return 0; // even intersect
+    else return 1;
 }
 
  
@@ -151,7 +173,7 @@ Vertice* parse(char* buffer){
     }
     
     free(buffer);
-    verticeArray[i+1].x=0, verticeArray[i+1].y=0, verticeArray[i+1].isNull=1;
+    verticeArray[memberCount].x=0, verticeArray[memberCount].y=0, verticeArray[memberCount].isNull=1; // mark the end with a null vertice
     
     return verticeArray;
 }
@@ -160,7 +182,7 @@ Vertice* parse(char* buffer){
 int main(){
     FILE* fp;
     fp = fopen("check.pol", "r");
-    for(int main=0; main<1; main++){
+    for(int main=0; main<2; main++){
         char* buffer = malloc(25000*sizeof(char));
         fgets(buffer, 25000, fp);
         
@@ -181,7 +203,7 @@ int main(){
         
         puts(polygon);
         
-        while( buffer[i] != '(')i++; // seek to next parenth
+        while( buffer[i] != '(')i++; // seek to next parent(
         
         starter = i;
         char* guard = malloc(8000*sizeof(char));
@@ -195,6 +217,11 @@ int main(){
         
         Vertice* polygonArray = parse(polygon);
         Vertice* guardArray = parse(guard);
-         
+        
+        int k=0;
+        while (guardArray[k].isNull==0){
+            printf("guard %d inside: %d\n", k, is_inside(&guardArray[k], polygonArray));
+            k++;
+        }
     } 
 }
