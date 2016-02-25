@@ -15,6 +15,7 @@ typedef struct vertice{
     double y;
     int isNull;
     double angle_to_guard;
+    int isInside;
 }Vertice;
 
 
@@ -37,8 +38,6 @@ double polar_angle(double p1_x, double p1_y, double p2_x, double p2_y){
     double polar_angle = atan2(deltaY, deltaX);
     return polar_angle;
 }
-
-
 
 // for qsort()
 int md_comparator(const void *v1, const void *v2)
@@ -101,27 +100,29 @@ int get_line_intersection(double p0_x, double p0_y, double p1_x, double p1_y, do
 
 
 
-int is_inside(Vertice* guard, Vertice* polygon){
+int is_inside(Vertice p, Vertice* polygon){
     int counter = 0;
     int i;
     double xinters;
-    Point p1,p2;
-    N = polygon.isNull;
+    Vertice p1,p2;
+    int N = polygon[0].isNull;
     p1 = polygon[0];
     for (i=1;i<=N;i++) {
+        if (fabs(p.x-p1.x)< EPSI && fabs(p.y-p1.y) <EPSI) return -1;
+        
         p2 = polygon[i % N];
-        if (p.y > MIN(p1.y,p2.y)) {
-            if (p.y <= MAX(p1.y,p2.y)) {
-                if (p.x <= MAX(p1.x,p2.x)) {
-                    if (p1.y != p2.y) {
+        if (p.y > MIN(p1.y,p2.y)-EPSI) {
+            if (p.y <= MAX(p1.y,p2.y)+EPSI) {
+                if (p.x <= MAX(p1.x,p2.x)+EPSI) {
+                    if (fabs(p1.y - p2.y)<EPSI) {
                         xinters = (p.y-p1.y)*(p2.x-p1.x)/(p2.y-p1.y)+p1.x;
-                        if (p1.x == p2.x || p.x <= xinters)
-                            counter++;
-                        }
+                        if (p1.x == p2.x || p.x <= xinters) counter++;
+                        
                     }
                 }
             }
         }
+    
         p1 = p2;
     }
 
@@ -141,7 +142,7 @@ Vertice* parse(char* buffer){
         if(buffer[i] == '(') memberCount++;
         i++;
     }
-    Vertice* verticeArray = malloc((memberCount+1)*sizeof(struct vertice));
+    Vertice* verticeArray = calloc((memberCount+1),sizeof(struct vertice));
     
     int pointer=0;
     for(i=0; i< memberCount;i++){
@@ -166,8 +167,6 @@ Vertice* parse(char* buffer){
             pointer++;
         }
         
-        
-        
         Vertice* new = malloc(sizeof(struct vertice));
         new->x = atof(doubleBuffer);
         new->y = atof(doubleBuffer2);
@@ -185,7 +184,7 @@ Vertice* parse(char* buffer){
 int main(){
     FILE* fp;
     fp = fopen("check.pol", "r");
-    for(int main=0; main<20; main++){
+    for(int main=0; main<3; main++){
         char* buffer = calloc(30000,sizeof(char));
         fgets(buffer, 30000, fp);
         
@@ -201,9 +200,6 @@ int main(){
              i++;
         }
         polygon[i-starter]='\0';
-        
-        
-        
         
         while( buffer[i] != '(')i++; // seek to next parent(
         
@@ -221,12 +217,26 @@ int main(){
         Vertice* guardArray = parse(guard);
         int k=0;
         printf("main: %d\n", main);
-        while (guardArray[k].isNull==0){
-            printf("guard %d : inside: %d\n",k, is_inside(&guardArray[k], polygonArray));
+        int counter = 0;
+        while (guardArray[k].isNull!=0){
+            
+            if(is_inside(guardArray[k], polygonArray) != 0){
+                guardArray[k].isInside =1;
+                counter++;
+            }
             k++;
+            
         }
-        double a, b;
-        free(polygonArray);
-        free(guardArray);
+
+        Vertice* insideGuardArray = calloc(counter, sizeof(struct vertice));
+        i=0;
+        for(k = 0; k<guardArray[0].isNull; k++){
+            if(guardArray[k].isInside=1){
+                insideGuardArray[counter]=guardArray[k];
+                i++;
+            }
+        }
+
+
     } 
 }
