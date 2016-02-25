@@ -28,8 +28,9 @@ void set_null(Vertice **a)
 typedef struct edge{
     struct edge* prevEdge;
     struct edge* nextEdge;
-    Vertice* a;
-    Vertice* b;
+    Vertice strt;
+    Vertice fins;
+    int check;
 }Edge;
 
 double polar_angle(double p1_x, double p1_y, double p2_x, double p2_y){
@@ -180,11 +181,21 @@ Vertice* parse(char* buffer){
     return verticeArray;
 }
 
+void copy_vertice_array(Vertice* dest, Vertice* source){
+    for (int i =0; i<source[0].isNull; i++){
+        new = malloc(sizeof(struct Vertice));
+        new->x = source[i].x; new->y = source[i].y;
+        new->isNull = source[i].isNull; new->angle_to_guard = source[i].angle_to_guard;
+        new->isInside = source[i].isInside;
+        dest[i] = *new;
+    }
+}
+
 
 int main(){
     FILE* fp;
     fp = fopen("check.pol", "r");
-    for(int main=0; main<3; main++){
+    for(int main=0; main<1; main++){
         char* buffer = calloc(30000,sizeof(char));
         fgets(buffer, 30000, fp);
         
@@ -215,8 +226,10 @@ int main(){
         
         Vertice* polygonArray = parse(polygon);
         Vertice* guardArray = parse(guard);
+
+
+        // List all guard inside polygon
         int k=0;
-        printf("main: %d\n", main);
         int counter = 0;
         while (guardArray[k].isNull!=0){
             
@@ -227,8 +240,6 @@ int main(){
             k++;
             
         }
-
-        // List all guard inside polygon
         Vertice* insideGuardArray = calloc(counter,sizeof(struct vertice));
         i=0;
         for(k = 0; k<guardArray[0].isNull; k++){
@@ -239,21 +250,50 @@ int main(){
             }
         }
 
+        
         // Create edge linked list
-        // Create list of visibility polygon
+        Edge* first = malloc(sizeof(struct Edge));
+        first->prevEdge = NULL; first->nextEdge = NULL; first->strt = polygonArray[0]; first->fins = polygonArray[1]; first->check =0;
+        
+        Edge* edgePointer = first;
+        for (int k =1; k<polygonArray[0]-1; ++i) {
+            Edge* new = malloc(sizeof(struct edge));
+            new->strt = polygonArray[k];
+            new->fins = polygonArray[k+1];
+            new->prevEdge = edgePointer;
+            new->check=0;
+            edgePointer->nextEdge = new;
+            edgePointer = new;
+        }
+        edgePointer->nextEdge = NULL;
+
+
+        // Create list of visibility polygons, one for each inside guard 
+        Vertice** visiblePolygon = calloc(insideGuardArray[0], sizeof(struct vertice*));
 
         // For everyguard inside the polygon
         for(k=0; k<insideGuardArray[k].isNull, k++){
-            // Replicate polygon array.
-                // Update polar angle of all polygon vertex to guard k
-            // Sort by polar angle to guard k
+
             Vertice curGuard = insideGuardArray[k];
-            // For every vertices in sorted array
+
+
+            // Replicate polygon array.
+            Vertice* polygonReplica = calloc(polygonArray[0], sizeof(Vertice));
+            copy_vertice_array(polygonReplica, polygonArray);
+
+            // Update polar angle of all polygon vertex to guard k
+            for (int i = 0; i < polygonReplica[0].isNull; i++){
+                polygonReplica[i].angle_to_guard = polar_angle(polygonReplica[i].x, polygonReplica[i].y, curGuard.x, curGuard.y);                
+            }
+            // Sort by polar angle to guard k
+            qsort(polygonReplica, polygonReplica[0].isNull, sizeof(struct vertice), &md_comparator);
+            
+            for(int i=0; i<polygonReplica[0].isNull; i++){   // For every vertices in sorted array
                 double distance = ; // distance from guard to vertex
 
-                Vertice curVert = ;
-                // Cast a ray from guard to vertices
+                Vertice curVert = polygonReplica[0];
 
+                // Cast a ray from guard to vertice
                 // y = mx + c
                 double m = (curVert.y - curGuard.y)/(curVert.x - curGuard.x);
                 double c = curGuard.y - m*curGuard.x;
@@ -264,16 +304,18 @@ int main(){
 
                 // Get first intersection point and on which edge
                 double min_distance;
-                Edge min_edge;
-                // For every edge in original polygon
+                Edge* min_edge = first;
+
+                while(first->nextEdge != NULL){ // For every edge in original polygon
                     double x0, y0;
-                    get_line_intersection(          &x0, &y0);
+                    get_line_intersection(      ,temp->x, temp->y,    &x0, &y0);
                     double temp_distance = ;
                     if(fabs(temp_distance-min_distance)<EPSI){
                         min_edge = this_edge;
                         min_distance = temp_distance;
                     }
-
+                }
+            }
                         
 
 
