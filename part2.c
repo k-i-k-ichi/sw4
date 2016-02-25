@@ -41,6 +41,13 @@ double polar_angle(double p1_x, double p1_y, double p2_x, double p2_y){
     return polar_angle;
 }
 
+void print_polygon(Vertice* polygon){
+    for (int i=0; i<polygon[0].isNull; i++){
+        printf("| %f %f |", polygon[i].x, polygon[i].y);
+    }
+    puts("");
+}
+
 // for qsort()
 int md_comparator(const void *v1, const void *v2)
 {
@@ -295,7 +302,7 @@ int main(){
 
         // For everyguard inside the polygon
         for(k=0; k<insideGuardArray[0].isNull; k++){
-            printf("guards: %d \n", insideGuardArray[0].isNull);
+            printf("guards: %d \n", k);
             Vertice curGuard = insideGuardArray[k];
 
             // Replicate polygon array.
@@ -307,8 +314,14 @@ int main(){
                 polygonReplica[i].angle_to_guard = polar_angle(polygonReplica[i].x, polygonReplica[i].y, curGuard.x, curGuard.y)+M_PI;                
             }
             // Sort by polar angle to guard k
-            qsort(polygonReplica, polygonReplica[0].isNull, sizeof(struct vertice), &md_comparator);
-
+            qsort(polygonReplica, polygonReplica[0].isNull, sizeof(struct vertice),  &md_comparator);
+            // Restore isNull order after sort
+            for (int i = 0; i < polygonArray[0].isNull; i++){
+                polygonReplica[i].isNull = polygonArray[i].isNull;
+            }
+            puts("order sorted");
+            print_polygon(polygonReplica);
+            puts("");
             // Construct a new visibility Polygon
             Vertice* visiblePolygon = calloc( 1000, sizeof(struct vertice));
             int counter = 0;
@@ -409,11 +422,13 @@ int main(){
                 }
                 counter++;
                 // Add vertex to visibility polygon
-                
+                visiblePolygon[0].isNull = counter;
                 free(temp);
             }
+            print_polygon(visiblePolygon);
             free(polygonReplica);
             free(visiblePolygon);
         }
     } 
 }
+
