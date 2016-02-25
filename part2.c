@@ -5,6 +5,10 @@
 #include <math.h>
 
 #define EPSI 0.0000000001
+#define MIN(x,y) (x < y ? x : y)
+#define MAX(x,y) (x > y ? x : y)
+#define INSIDE 0
+#define OUTSIDE 1
 
 typedef struct vertice{
     double x;
@@ -98,41 +102,35 @@ int get_line_intersection(double p0_x, double p0_y, double p1_x, double p1_y, do
 
 
 int is_inside(Vertice* guard, Vertice* polygon){
-    //paraemter: guard : pointer to guard
-    //      polygon: pointer to array of polygon
-    
-    // cast a ray vertically downward from guard
-    // as a line segment from guard to a very large negative vertex 
-    Vertice* temp = malloc(sizeof(struct vertice));
-    temp->x = guard->x;
-    temp->y = -999999;
-    
-    int intersectCount =0;
-    
-    int vertexIndex = 0;
-    while(polygon[vertexIndex+1].isNull ==0){
-        
-        if (fabs(guard->x - polygon[vertexIndex].x) <EPSI && fabs(guard->y - polygon[vertexIndex].y) < EPSI ) return -1;
-        // Iterate through all of edges of polygon
-        // Check for collision with the downward ray
-        int isIntersect = get_line_intersection(guard->x, guard->y, temp->x, temp->y, polygon[vertexIndex].x, polygon[vertexIndex].y, polygon[vertexIndex+1].x, polygon[vertexIndex+1].y, NULL, NULL);
-        
-        if (isIntersect == 1) intersectCount++;
-        vertexIndex++;
+    int counter = 0;
+    int i;
+    double xinters;
+    Point p1,p2;
+    N = polygon.isNull;
+    p1 = polygon[0];
+    for (i=1;i<=N;i++) {
+        p2 = polygon[i % N];
+        if (p.y > MIN(p1.y,p2.y)) {
+            if (p.y <= MAX(p1.y,p2.y)) {
+                if (p.x <= MAX(p1.x,p2.x)) {
+                    if (p1.y != p2.y) {
+                        xinters = (p.y-p1.y)*(p2.x-p1.x)/(p2.y-p1.y)+p1.x;
+                        if (p1.x == p2.x || p.x <= xinters)
+                            counter++;
+                        }
+                    }
+                }
+            }
+        }
+        p1 = p2;
     }
-    
-    // the last edge is from last vertex to first vertex
-    
 
-    if (fabs(guard->x - polygon[vertexIndex].x) <EPSI && fabs(guard->y - polygon[vertexIndex].y) < EPSI ) return -1;
-    int isIntersect = get_line_intersection(guard->x, guard->y, temp->x, temp->y, polygon[vertexIndex].x, polygon[vertexIndex].y, polygon[0].x, polygon[0].y, NULL, NULL);
-    if(isIntersect==1)intersectCount++;
-    
-    free(temp);
-    
-    if(intersectCount %2 ==0) return 0; // even intersect
-    else return 1;
+    if (counter % 2 == 0)
+        return(OUTSIDE);
+    else
+        return(INSIDE);
 }
+        
 
  
 
@@ -143,7 +141,7 @@ Vertice* parse(char* buffer){
         if(buffer[i] == '(') memberCount++;
         i++;
     }
-    Vertice* verticeArray = malloc( (memberCount+1) *sizeof(struct vertice));
+    Vertice* verticeArray = malloc((memberCount+1)*sizeof(struct vertice));
     
     int pointer=0;
     for(i=0; i< memberCount;i++){
@@ -173,12 +171,12 @@ Vertice* parse(char* buffer){
         Vertice* new = malloc(sizeof(struct vertice));
         new->x = atof(doubleBuffer);
         new->y = atof(doubleBuffer2);
-        new->isNull =0;
+        new->isNull =memberCount-i;
         verticeArray[i] = *new;
     }
     
     free(buffer);
-    verticeArray[memberCount].x=0, verticeArray[memberCount].y=0, verticeArray[memberCount].isNull=1; // mark the end with a null vertice
+    verticeArray[memberCount].x=0, verticeArray[memberCount].y=0, verticeArray[memberCount].isNull=0; // mark the end with a null vertice
     
     return verticeArray;
 }
