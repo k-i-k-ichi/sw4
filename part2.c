@@ -102,12 +102,13 @@ int get_line_intersection(double p0_x, double p0_y, double p1_x, double p1_y, do
 
     if (s >= 0 && s <= 1 && t >= 0 && t <= 1)
     {
+
         // Collision detected
-        if (i_x != NULL)
-            double temp_x = p0_x + (t * s1_x);
+        double temp_x = p0_x + (t * s1_x);
+        double temp_y = p0_y + (t * s1_y);
+        if (i_x != NULL)    
             *i_x = temp_x;
         if (i_y != NULL)
-            double temp_y = p0_y + (t * s1_y);
             *i_y = temp_y;
         if (fabs(temp_x-p0_x)< EPSI && fabs(temp_y-p0_y)<EPSI) return -1;
         if (fabs(temp_x-p1_x)< EPSI && fabs(temp_y-p1_y)<EPSI) return -1;
@@ -115,7 +116,7 @@ int get_line_intersection(double p0_x, double p0_y, double p1_x, double p1_y, do
         if (fabs(temp_x-p3_x)< EPSI && fabs(temp_y-p3_y)<EPSI) return -1;
         return 1;
     }
-    return 0; // No collision
+    return 0; // No collision, actually never happens
 }
 
 
@@ -205,7 +206,7 @@ Vertice* parse(char* buffer){
 
 void copy_vertice_array(Vertice* dest, Vertice* source){
     for (int i =0; i<source[0].isNull; i++){
-        new = malloc(sizeof(struct Vertice));
+        Vertice* new = malloc(sizeof(struct vertice));
         new->x = source[i].x; new->y = source[i].y;
         new->isNull = source[i].isNull; new->angle_to_guard = source[i].angle_to_guard;
         new->isInside = source[i].isInside;
@@ -250,7 +251,6 @@ int main(){
         Vertice* polygonArray = parse(polygon);
         Vertice* guardArray = parse(guard);
 
-
         // List all guard inside polygon
         int k=0;
         int counter = 0;
@@ -275,12 +275,13 @@ int main(){
 
         
         // Create edge linked list
-        Edge* first = malloc(sizeof(struct Edge));
-        first->prevEdge = NULL; first->nextEdge = NULL; first->strt = polygonArray[0]; first->fins = polygonArray[1]; first->check =0;
+        Edge* first = malloc(sizeof(struct edge));
+        first->prevEdge = NULL; first->nextEdge = NULL; first->strt = &polygonArray[0]; first->fins = &polygonArray[1]; first->check =0;
         
         // for each 2 vertices of polygon make an edge object
         Edge* edgePointer = first;
-        for (int k =1; k<polygonArray[0]-1; ++i) {
+        for (int k =1; k<polygonArray[0].isNull-1; k++) {
+            printf(" ! %d\n",k);
             Edge* new = malloc(sizeof(struct edge));
             new->strt = &polygonArray[k];
             new->fins = &polygonArray[k+1];
@@ -293,29 +294,30 @@ int main(){
 
 
         // For everyguard inside the polygon
-        for(k=0; k<insideGuardArray[k].isNull, k++){
+        for(k=0; k<insideGuardArray[0].isNull; k++){
+            printf("guards: %d \n", insideGuardArray[0].isNull);
             Vertice curGuard = insideGuardArray[k];
 
             // Replicate polygon array.
-            Vertice* polygonReplica = calloc(polygonArray[0], sizeof(Vertice));
+            Vertice* polygonReplica = calloc(polygonArray[0].isNull, sizeof(Vertice));
             copy_vertice_array(polygonReplica, polygonArray);
 
             // Update polar angle of all polygon vertex to guard k
             for (int i = 0; i < polygonReplica[0].isNull; i++){
-                polygonReplica[i].angle_to_guard = polar_angle(polygonReplica[i].x, polygonReplica[i].y, curGuard.x, curGuard.y)+PI;                
+                polygonReplica[i].angle_to_guard = polar_angle(polygonReplica[i].x, polygonReplica[i].y, curGuard.x, curGuard.y)+M_PI;                
             }
             // Sort by polar angle to guard k
             qsort(polygonReplica, polygonReplica[0].isNull, sizeof(struct vertice), &md_comparator);
 
             // Construct a new visibility Polygon
-            Vertice* visiblePolygon = calloc(1000, sizeof(struct Vertice));
+            Vertice* visiblePolygon = calloc( 1000, sizeof(struct vertice));
             int counter = 0;
 
             // Finding visible point
             for(int i=0; i<polygonReplica[0].isNull; i++){   // For every vertices in sorted array
                 Vertice curVert = polygonReplica[i];
 
-                double distance = sqrt(pow(curGuard.x - curVert.x , 2), pow(curGuard.y - curVert.y , 2)); // distance from guard to vertex
+                double distance = sqrt(pow(curGuard.x - curVert.x , 2) + pow(curGuard.y - curVert.y , 2)); // distance from guard to vertex
 
 
                 // Cast a ray from guard to vertex
@@ -340,14 +342,13 @@ int main(){
                         curEdge= curEdge->nextEdge;
                         continue;
                     }
-                    double temp_distance = sqrt(pow(curGuard.x - x0, 2 ), pow(curGuard.y - y, 2 )); //dist from intersect point to guard
+                    double temp_distance = sqrt(pow(curGuard.x - x0, 2 ) + pow(curGuard.y - y0, 2 )); //dist from intersect point to guard
                     if( fabs(temp_distance-min_distance)<EPSI ){
                         min_edge = curEdge;
                         min_distance = temp_distance;
-                        minX = x0, miny = y0;
+                        minX = x0, minY = y0;
                     }
-
-
+                    curEdge= curEdge->nextEdge;
                 }
                 // after while min_edge = nearest wall hit by ray
                 // minX minY now the coordinate of nearest intersecting
@@ -361,7 +362,7 @@ int main(){
                     // collision inside line segment
                     
                     Vertice* new = malloc(sizeof(struct vertice));
-                    new->x = minX, new->y = minY,
+                    new->x = minX, new->y = minY;
                     
 
                     // Split the edge
@@ -383,7 +384,7 @@ int main(){
                     
                     // add the collision vertex
                     Vertice* new = malloc(sizeof(struct vertice));
-                    new->x = minX, new->y = minY,
+                    new->x = minX, new->y = minY;
                     
 
                     // Split the edge
@@ -402,17 +403,17 @@ int main(){
                     visiblePolygon[counter] = curVert;
 
                 }
-
-
                 if (fabs(minX - curVert.x) < EPSI && fabs(minY - curVert.y)< EPSI){ // no edge collision
                     // add the curVert
                     visiblePolygon[counter] = curVert;    
- t              }
+                }
                 counter++;
                 // Add vertex to visibility polygon
+                
+                free(temp);
             }
+            free(polygonReplica);
+            free(visiblePolygon);
         }
-
-
     } 
 }
