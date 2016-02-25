@@ -16,6 +16,7 @@ typedef struct vertice{
     int isNull;
     double angle_to_guard;
     int isInside;
+    int isVisible;
 }Vertice;
 
 
@@ -28,8 +29,8 @@ void set_null(Vertice **a)
 typedef struct edge{
     struct edge* prevEdge;
     struct edge* nextEdge;
-    Vertice strt;
-    Vertice fins;
+    Vertice* strt;
+    Vertice* fins;
     int check;
 }Edge;
 
@@ -59,6 +60,10 @@ int md_comparator(const void *v1, const void *v2)
 int get_line_intersection(double p0_x, double p0_y, double p1_x, double p1_y, double p2_x, double p2_y, double p3_x, double p3_y, double* i_x, double* i_y)
 {
 
+    // Return: 0 for non collision
+    //          1 for proper crossing
+    //            -1 when they are "touching"
+
     // special case
     double case1, case2, case3, case4;
     case1 = fabs(p0_x-p2_x) + fabs(p0_y-p2_y);
@@ -68,16 +73,16 @@ int get_line_intersection(double p0_x, double p0_y, double p1_x, double p1_y, do
     
     if(case1<2*EPSI || case2<2*EPSI){
         if(i_x != NULL)*i_x = p0_x;
-        return 1;
+        if(i_y != NULL)*i_y = p0_y;
+        return -1;
     }
     
     if(case3<2*EPSI || case4<2*EPSI){
         if(i_x != NULL)*i_x = p1_x;
-        return 1;
+        if(i_y != NULL)*i_y = p1_y;
+        return -1;
     }
-    
-        
-    
+
     double s1_x, s1_y, s2_x, s2_y;
     s1_x = p1_x - p0_x;     s1_y = p1_y - p0_y;
     s2_x = p3_x - p2_x;     s2_y = p3_y - p2_y;
@@ -90,9 +95,15 @@ int get_line_intersection(double p0_x, double p0_y, double p1_x, double p1_y, do
     {
         // Collision detected
         if (i_x != NULL)
-            *i_x = p0_x + (t * s1_x);
+            double temp_x = p0_x + (t * s1_x);
+            *i_x = temp_x;
         if (i_y != NULL)
-            *i_y = p0_y + (t * s1_y);
+            double temp_y = p0_y + (t * s1_y);
+            *i_y = temp_y;
+        if (fabs(temp_x-p0_x)< EPSI && fabs(temp_y-p0_y)<EPSI) return -1;
+        if (fabs(temp_x-p1_x)< EPSI && fabs(temp_y-p1_y)<EPSI) return -1;
+        if (fabs(temp_x-p2_x)< EPSI && fabs(temp_y-p2_y)<EPSI) return -1;
+        if (fabs(temp_x-p3_x)< EPSI && fabs(temp_y-p3_y)<EPSI) return -1;
         return 1;
     }
     return 0; // No collision
@@ -172,11 +183,13 @@ Vertice* parse(char* buffer){
         new->x = atof(doubleBuffer);
         new->y = atof(doubleBuffer2);
         new->isNull =memberCount-i;
+        new->isVisible = 0;
         verticeArray[i] = *new;
     }
     
     free(buffer);
     verticeArray[memberCount].x=0, verticeArray[memberCount].y=0, verticeArray[memberCount].isNull=0; // mark the end with a null vertice
+    verticeArray[memberCount].isVisible = 0;
     
     return verticeArray;
 }
@@ -187,6 +200,7 @@ void copy_vertice_array(Vertice* dest, Vertice* source){
         new->x = source[i].x; new->y = source[i].y;
         new->isNull = source[i].isNull; new->angle_to_guard = source[i].angle_to_guard;
         new->isInside = source[i].isInside;
+        new->isVisible = source[i].isVisible;
         dest[i] = *new;
     }
 }
@@ -255,27 +269,23 @@ int main(){
         Edge* first = malloc(sizeof(struct Edge));
         first->prevEdge = NULL; first->nextEdge = NULL; first->strt = polygonArray[0]; first->fins = polygonArray[1]; first->check =0;
         
+        // for each 2 vertices of polygon make an edge object
         Edge* edgePointer = first;
         for (int k =1; k<polygonArray[0]-1; ++i) {
             Edge* new = malloc(sizeof(struct edge));
-            new->strt = polygonArray[k];
-            new->fins = polygonArray[k+1];
+            new->strt = &polygonArray[k];
+            new->fins = &polygonArray[k+1];
             new->prevEdge = edgePointer;
             new->check=0;
             edgePointer->nextEdge = new;
             edgePointer = new;
         }
-        edgePointer->nextEdge = NULL;
+        edgePointer->nextEdge = NULL; // now the last edge
 
-
-        // Create list of visibility polygons, one for each inside guard 
-        Vertice** visiblePolygon = calloc(insideGuardArray[0], sizeof(struct vertice*));
 
         // For everyguard inside the polygon
         for(k=0; k<insideGuardArray[k].isNull, k++){
-
             Vertice curGuard = insideGuardArray[k];
-
 
             // Replicate polygon array.
             Vertice* polygonReplica = calloc(polygonArray[0], sizeof(Vertice));
@@ -283,56 +293,85 @@ int main(){
 
             // Update polar angle of all polygon vertex to guard k
             for (int i = 0; i < polygonReplica[0].isNull; i++){
-                polygonReplica[i].angle_to_guard = polar_angle(polygonReplica[i].x, polygonReplica[i].y, curGuard.x, curGuard.y);                
+                polygonReplica[i].angle_to_guard = polar_angle(polygonReplica[i].x, polygonReplica[i].y, curGuard.x, curGuard.y)+PI;                
             }
             // Sort by polar angle to guard k
             qsort(polygonReplica, polygonReplica[0].isNull, sizeof(struct vertice), &md_comparator);
-            
+
+            // Construct a new visibility Polygon
+            Vertice* visiblePolygon = calloc(1000, sizeof(struct Vertice));
+            int counter = 0;
+
+            // Finding visible point
             for(int i=0; i<polygonReplica[0].isNull; i++){   // For every vertices in sorted array
-                double distance = ; // distance from guard to vertex
+                Vertice curVert = polygonReplica[i];
 
-                Vertice curVert = polygonReplica[0];
+                double distance = sqrt(pow(curGuard.x - curVert.x , 2), pow(curGuard.y - curVert.y , 2)); // distance from guard to vertex
 
-                // Cast a ray from guard to vertice
+
+                // Cast a ray from guard to vertex
+                // as a line segment from guard to temp
                 // y = mx + c
                 double m = (curVert.y - curGuard.y)/(curVert.x - curGuard.x);
                 double c = curGuard.y - m*curGuard.x;
-
                 Vertice* temp = calloc(1, sizeof(struct vertice));
-                temp->x =1000;
-                temp->y = m*temp->x + c;
+                temp->x =1000; // very far away
+                temp->y = m*(temp->x) + c;
 
                 // Get first intersection point and on which edge
-                double min_distance;
+                
                 Edge* min_edge = first;
-
-                while(first->nextEdge != NULL){ // For every edge in original polygon
+                double minX = curVert.x, minY = curVert.y;
+                Edge* curEdge = first;
+                double min_distance = 9999;
+                while(curEdge->nextEdge != NULL){ // For every edge in original polygon
                     double x0, y0;
-                    get_line_intersection(      ,temp->x, temp->y,    &x0, &y0);
-                    double temp_distance = ;
-                    if(fabs(temp_distance-min_distance)<EPSI){
-                        min_edge = this_edge;
-                        min_distance = temp_distance;
+                    int isEndPoint = get_line_intersection(curGuard.x, curGuard.y,temp->x, temp->y, curEdge->strt->x, curEdge->strt->y, curEdge->fins->x, curEdge->fins->y, &x0, &y0);
+                    if(isEndPoint == -1) { // If x0 y0 belongs to either the guard  ( guard sit on polygon vertice/edge) or the Edge skip 
+                        curEdge= curEdge->nextEdge;
+                        continue;
                     }
+                    double temp_distance = sqrt(pow(curGuard.x - x0, 2 ), pow(curGuard.y - y, 2 )); //dist from intersect point to guard
+                    if( fabs(temp_distance-min_distance)<EPSI ){
+                        min_edge = curEdge;
+                        min_distance = temp_distance;
+                        minX = x0, miny = y0;
+                    }
+
+
                 }
-            }
+                // after while min_edge = nearest wall hit by ray
+                // minX minY now the coordinate of nearest intersecting
+                // if isEndPoint == -1 for all edges, minX minY is the current vertex
                         
 
 
-                if ( fabs(min_distance-0)<EPSI && fabs(min_distance-distance)<EPSI ) // inside line segment 
+                if ( min_distance < distance - EPSI ){ 
+                    // collision inside line segment
+                    // consider min_distance = distance
+                    // can't happen due to isEndPoint = -1 thus skip
 
-                    // Add the intersection point to visibility polygon
+                    
                     // "Divide" the edge of original polygon into 2 new edge by the intersection point
-                // If Outside line segment (not on the end points of the edge)
-                   
-                    // If adjacent nodes of orginal polygon are on 2 sides
-                        // Add the vertex to the visibility polygon
-                    // Else
-                        // "Divide" min_edge by interesction point
+                    // Mark 2 new edges as visible
 
-            
-                // no intersection to all of edges other than end points )
+                }
+                if( min_distance > distance + EPSI ){ 
+                    //If Outside line segment (not on the end points of the edge)
+                   
+                    // Divide the intersect edge to 2 new edge
+                    // The edge with start
+                    
+                }
+
+
+                if (fabs(minX - curVert.x) < EPSI && fabs(minY - curVert.y)< EPSI){ // no edge collision
+                    //curVert is marked as visible
+                    curVert.isVisible = 1;
+                }
+                counter++;
                 // Add vertex to visibility polygon
+            }
         }
 
 
