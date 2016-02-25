@@ -228,13 +228,69 @@ int main(){
             
         }
 
-        Vertice* insideGuardArray = calloc(counter, sizeof(struct vertice));
+        // List all guard inside polygon
+        Vertice* insideGuardArray = calloc(counter,sizeof(struct vertice));
         i=0;
         for(k = 0; k<guardArray[0].isNull; k++){
-            if(guardArray[k].isInside=1){
-                insideGuardArray[counter]=guardArray[k];
+            if(guardArray[k].isInside==1){
+                insideGuardArray[i]=guardArray[k];
+                insideGuardArray[i].isNull=counter-i;
                 i++;
             }
+        }
+
+        // Create edge linked list
+        // Create list of visibility polygon
+
+        // For everyguard inside the polygon
+        for(k=0; k<insideGuardArray[k].isNull, k++){
+            // Replicate polygon array.
+                // Update polar angle of all polygon vertex to guard k
+            // Sort by polar angle to guard k
+            Vertice curGuard = insideGuardArray[k];
+            // For every vertices in sorted array
+                double distance = ; // distance from guard to vertex
+
+                Vertice curVert = ;
+                // Cast a ray from guard to vertices
+
+                // y = mx + c
+                double m = (curVert.y - curGuard.y)/(curVert.x - curGuard.x);
+                double c = curGuard.y - m*curGuard.x;
+
+                Vertice* temp = calloc(1, sizeof(struct vertice));
+                temp->x =1000;
+                temp->y = m*temp->x + c;
+
+                // Get first intersection point and on which edge
+                double min_distance;
+                Edge min_edge;
+                // For every edge in original polygon
+                    double x0, y0;
+                    get_line_intersection(          &x0, &y0);
+                    double temp_distance = ;
+                    if(fabs(temp_distance-min_distance)<EPSI){
+                        min_edge = this_edge;
+                        min_distance = temp_distance;
+                    }
+
+                        
+
+
+                if ( fabs(min_distance-0)<EPSI && fabs(min_distance-distance)<EPSI ) // inside line segment 
+
+                    // Add the intersection point to visibility polygon
+                    // "Divide" the edge of original polygon into 2 new edge by the intersection point
+                // If Outside line segment (not on the end points of the edge)
+                   
+                    // If adjacent nodes of orginal polygon are on 2 sides
+                        // Add the vertex to the visibility polygon
+                    // Else
+                        // "Divide" min_edge by interesction point
+
+            
+                // no intersection to all of edges other than end points )
+                // Add vertex to visibility polygon
         }
 
 
