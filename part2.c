@@ -46,12 +46,21 @@ int md_comparator(const void *v1, const void *v2)
 {
     const Vertice* p1 = (Vertice* )v1;
     const Vertice* p2 = (Vertice* )v2;
+    
+    // sort by angle 
     if ((p1->angle_to_guard - p2->angle_to_guard) < -EPSI) // epsilon equality
         return -1;
     else if ((p1->angle_to_guard - p2->angle_to_guard) > EPSI)
         return +1;
-    else
+    
+    // angle are equal, sort by order
+    if(p1->isNull > p2->isNull) // Greater isNull means vertex p1 is before p2 in poylgon array 
+        return -1;
+    else if (p1->isNull < p2->isNull)
+        return 1;
+    else // 2 vertice have the same order, must be the same vetex
         return 0;
+
 }
 
 
@@ -345,30 +354,60 @@ int main(){
                 // if isEndPoint == -1 for all edges, minX minY is the current vertex
                         
 
+                // consider min_distance = distance
+                    // can't happen due to isEndPoint = -1 thus skip
 
                 if ( min_distance < distance - EPSI ){ 
                     // collision inside line segment
-                    // consider min_distance = distance
-                    // can't happen due to isEndPoint = -1 thus skip
-
                     
-                    // "Divide" the edge of original polygon into 2 new edge by the intersection point
-                    // Mark 2 new edges as visible
+                    Vertice* new = malloc(sizeof(struct vertice));
+                    new->x = minX, new->y = minY,
+                    
+
+                    // Split the edge
+                    Edge* new_edge = malloc(sizeof(struct edge));
+                    new_edge->strt = new;
+                    new_edge->fins = min_edge->fins;
+                    new_edge->nextEdge = min_edge->nextEdge;
+                    new_edge->prevEdge = min_edge;
+                    min_edge->nextEdge = new_edge;
+                    min_edge->fins = new;
+
+                    // add the collision vertex
+                    visiblePolygon[counter] = *new;
 
                 }
                 if( min_distance > distance + EPSI ){ 
                     //If Outside line segment (not on the end points of the edge)
-                   
                     // Divide the intersect edge to 2 new edge
-                    // The edge with start
                     
+                    // add the collision vertex
+                    Vertice* new = malloc(sizeof(struct vertice));
+                    new->x = minX, new->y = minY,
+                    
+
+                    // Split the edge
+                    Edge* new_edge = malloc(sizeof(struct edge));
+                    new_edge->strt = new;
+                    new_edge->fins = min_edge->fins;
+                    new_edge->nextEdge = min_edge->nextEdge;
+                    new_edge->prevEdge = min_edge;
+                    min_edge->nextEdge = new_edge;
+                    min_edge->fins = new;
+
+                    // add the collision vertex
+                    visiblePolygon[counter] = *new;
+                    counter++; // in this case counter is increment twice
+                    // then add the curVertex
+                    visiblePolygon[counter] = curVert;
+
                 }
 
 
                 if (fabs(minX - curVert.x) < EPSI && fabs(minY - curVert.y)< EPSI){ // no edge collision
-                    //curVert is marked as visible
-                    curVert.isVisible = 1;
-                }
+                    // add the curVert
+                    visiblePolygon[counter] = curVert;    
+ t              }
                 counter++;
                 // Add vertex to visibility polygon
             }
