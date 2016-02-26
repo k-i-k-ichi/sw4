@@ -17,6 +17,7 @@ typedef struct vertice{
     double angle_to_guard;
     int isInside;
     int isVisible;
+    struct vertice* is_on_polygon;
 }Vertice;
 
 
@@ -33,6 +34,41 @@ typedef struct edge{
     Vertice* fins;
     int check;
 }Edge;
+
+
+double segment_distance(Vertice p1, Vertice p2){
+    return sqrt(pow(p1.x-p2.x,2)+ pow((p1.y-p2.y),2));
+}
+
+int is_segment_inside(Vertice guard, Vertice b, Vertice* polygonArray){
+    if(guard.is_on_polygon == NULL){ 
+        puts("no reference to original vertex in polygonArray");
+        return 1;
+    }
+    
+
+    // get vertex that the guard is standing on
+    Vertice* p = guard.is_on_polygon;
+    // get the previous vertex 
+    // note: ( polygonArray[0]->isNull - p->isNull ) = p's index
+    Vertice previous = polygonArray[polygonArray[0].isNull - p->isNull + 1];
+    Vertice next = polygonArray[polygonArray[0].isNull - p->isNull -1];
+
+    double angle_difference = 2*M_PI - b.angle_to_guard;
+
+    // rotate to 0, epsilon just to make sure
+    // wrap around 2 PI
+    double guard_previous =fmod( ( previous.angle_to_guard + angle_difference +0.5*EPSI) , (2*M_PI));
+    double guard_next =    fmod(( next.angle_to_guard + angle_difference + 0.5*EPSI) , (2*M_PI)); 
+    if (guard_previous-guard_next < -EPSI) return 1;
+    else return 0;
+}
+
+int is_same_vertice(Vertice p1, Vertice p2){
+    if (fabs(p1.x - p2.x)< EPSI && fabs(p1.y - p2.y) < EPSI )
+        return 1;
+    return 0;
+}
 
 double polar_angle(double p1_x, double p1_y, double p2_x, double p2_y){
     double deltaY = p2_y - p1_y;
@@ -129,23 +165,40 @@ int get_line_intersection(double p0_x, double p0_y, double p1_x, double p1_y, do
 
 
 
-int is_inside(Vertice p, Vertice* polygon){
+int is_inside(Vertice* p, Vertice* polygon){
     int counter = 0;
     int i;
     double xinters;
-    Vertice p1,p2;
+    
     int N = polygon[0].isNull;
-    p1 = polygon[0];
+    
     for (i=1;i<=N;i++) {
-        if (fabs(p.x-p1.x)< EPSI && fabs(p.y-p1.y) <EPSI) return -1;
-        
+
+        Vertice p1,p2;
+        p1 = polygon[i-1];
         p2 = polygon[i % N];
-        if (p.y > MIN(p1.y,p2.y)-EPSI) {
-            if (p.y <= MAX(p1.y,p2.y)+EPSI) {
-                if (p.x <= MAX(p1.x,p2.x)+EPSI) {
+        
+        if (is_same_vertice(*p, p1) == 1) { // p is identical to p1
+            p->is_on_polygon = &p1; // make reference to the identical vertex
+                                    // for this to work p is passed as pointer
+            return -1;
+        }
+        else if(is_same_vertice(*p, p2) ){
+            p1 = p2;
+            continue;
+        }
+        // when p is between p1, p2, excluding p1, p2
+        else if ( segment_distance(p1,*p) + segment_distance(*p,p2) <= segment_distance(p1, p2) +EPSI ){
+            p->is_on_polygon = NULL;
+            return INSIDE;
+        }
+        
+        if (p->y > MIN(p1.y,p2.y)-EPSI) {
+            if (p->y <= MAX(p1.y,p2.y)+EPSI) {
+                if (p->x <= MAX(p1.x,p2.x)+EPSI) {
                     if (fabs(p1.y - p2.y)<EPSI) {
-                        xinters = (p.y-p1.y)*(p2.x-p1.x)/(p2.y-p1.y)+p1.x;
-                        if (p1.x == p2.x || p.x <= xinters) counter++;
+                        xinters = (p->y-p1.y)*(p2.x-p1.x)/(p2.y-p1.y)+p1.x;
+                        if (p1.x == p2.x || p->x <= xinters) counter++;
                         
                     }
                 }
@@ -155,10 +208,14 @@ int is_inside(Vertice p, Vertice* polygon){
         p1 = p2;
     }
 
-    if (counter % 2 == 0)
+    if (counter % 2 == 0){
+        p->is_on_polygon = NULL;
         return(OUTSIDE);
-    else
+    }
+    else{
+        p->is_on_polygon = NULL;
         return(INSIDE);
+    }
 }
         
 
@@ -218,9 +275,11 @@ void copy_vertice_array(Vertice* dest, Vertice* source){
         new->isNull = source[i].isNull; new->angle_to_guard = source[i].angle_to_guard;
         new->isInside = source[i].isInside;
         new->isVisible = source[i].isVisible;
+        new->is_on_polygon = source[i].is_on_polygon;
         dest[i] = *new;
     }
 }
+
 
 
 int main(){
@@ -259,26 +318,15 @@ int main(){
         Vertice* guardArray = parse(guard);
 
         // List all guard inside polygon
-        int k=0;
-        int counter = 0;
-        while (guardArray[k].isNull!=0){
+        
+        for (int i = 0; i < guardArray[0].isNull; i++){
             
-            if(is_inside(guardArray[k], polygonArray) != 0){
-                guardArray[k].isInside =1;
-                counter++;
-            }
-            k++;
+            is_inside(&guardArray[i], polygonArray);
             
         }
-        Vertice* insideGuardArray = calloc(counter,sizeof(struct vertice));
-        i=0;
-        for(k = 0; k<guardArray[0].isNull; k++){
-            if(guardArray[k].isInside==1){
-                insideGuardArray[i]=guardArray[k];
-                insideGuardArray[i].isNull=counter-i;
-                i++;
-            }
-        }
+
+        Vertice* insideGuardArray = guardArray;
+        printf("test2: %f | %f \n", insideGuardArray[0].is_on_polygon->x, insideGuardArray[0].is_on_polygon->y);
 
         
         // Create edge linked list
@@ -288,7 +336,7 @@ int main(){
         // for each 2 vertices of polygon make an edge object
         Edge* edgePointer = first;
         for (int k =1; k<polygonArray[0].isNull-1; k++) {
-            printf(" ! %d\n",k);
+            
             Edge* new = malloc(sizeof(struct edge));
             new->strt = &polygonArray[k];
             new->fins = &polygonArray[k+1];
@@ -301,34 +349,49 @@ int main(){
 
 
         // For everyguard inside the polygon
-        for(k=0; k<insideGuardArray[0].isNull; k++){
+        for(int k=0; k< 1 /*insideGuardArray[0].isNull*/; k++){
             printf("guards: %d \n", k);
             Vertice curGuard = insideGuardArray[k];
-
+            printf("test2: %f | %f \n", curGuard.is_on_polygon->x, curGuard.is_on_polygon->y);
             // Replicate polygon array.
             Vertice* polygonReplica = calloc(polygonArray[0].isNull, sizeof(Vertice));
             copy_vertice_array(polygonReplica, polygonArray);
-
+            
             // Update polar angle of all polygon vertex to guard k
             for (int i = 0; i < polygonReplica[0].isNull; i++){
                 polygonReplica[i].angle_to_guard = polar_angle(polygonReplica[i].x, polygonReplica[i].y, curGuard.x, curGuard.y)+M_PI;                
             }
             // Sort by polar angle to guard k
             qsort(polygonReplica, polygonReplica[0].isNull, sizeof(struct vertice),  &md_comparator);
+            
+
             // Restore isNull order after sort
             for (int i = 0; i < polygonArray[0].isNull; i++){
                 polygonReplica[i].isNull = polygonArray[i].isNull;
+                polygonReplica[i].isVisible = 0;
             }
-            puts("order sorted");
-            print_polygon(polygonReplica);
-            puts("");
+
             // Construct a new visibility Polygon
             Vertice* visiblePolygon = calloc( 1000, sizeof(struct vertice));
-            int counter = 0;
+            int counter2 = 0;
 
             // Finding visible point
             for(int i=0; i<polygonReplica[0].isNull; i++){   // For every vertices in sorted array
                 Vertice curVert = polygonReplica[i];
+
+
+                if (is_same_vertice(curGuard, curVert) == 1){
+                    visiblePolygon[counter2] = curVert;
+                    counter2++;
+                    continue;
+                }
+
+                // check if ray is inside polygon.
+                if (is_segment_inside(curGuard, curVert, polygonArray) == 0){
+                    continue; // if not skip to next vertex
+                }
+                
+
 
                 double distance = sqrt(pow(curGuard.x - curVert.x , 2) + pow(curGuard.y - curVert.y , 2)); // distance from guard to vertex
 
@@ -348,6 +411,15 @@ int main(){
                 double minX = curVert.x, minY = curVert.y;
                 Edge* curEdge = first;
                 double min_distance = 9999;
+
+
+                
+                // ( note that in concave polygon, the linesegment between 2 polygon vertex is
+                // not guaranteed to be inside the polygon )
+
+                // if not skip to next edge
+
+
                 while(curEdge->nextEdge != NULL){ // For every edge in original polygon
                     double x0, y0;
                     int isEndPoint = get_line_intersection(curGuard.x, curGuard.y,temp->x, temp->y, curEdge->strt->x, curEdge->strt->y, curEdge->fins->x, curEdge->fins->y, &x0, &y0);
@@ -388,7 +460,7 @@ int main(){
                     min_edge->fins = new;
 
                     // add the collision vertex
-                    visiblePolygon[counter] = *new;
+                    visiblePolygon[counter2] = *new;
 
                 }
                 if( min_distance > distance + EPSI ){ 
@@ -410,19 +482,21 @@ int main(){
                     min_edge->fins = new;
 
                     // add the collision vertex
-                    visiblePolygon[counter] = *new;
-                    counter++; // in this case counter is increment twice
+                    visiblePolygon[counter2] = *new;
+                    counter2++; // in this case counter is increment twice
                     // then add the curVertex
-                    visiblePolygon[counter] = curVert;
+                    visiblePolygon[counter2] = curVert;
 
                 }
                 if (fabs(minX - curVert.x) < EPSI && fabs(minY - curVert.y)< EPSI){ // no edge collision
+                    
+
                     // add the curVert
-                    visiblePolygon[counter] = curVert;    
+                    visiblePolygon[counter2] = curVert;    
                 }
-                counter++;
+                counter2++;
                 // Add vertex to visibility polygon
-                visiblePolygon[0].isNull = counter;
+                visiblePolygon[0].isNull = counter2;
                 free(temp);
             }
             print_polygon(visiblePolygon);
@@ -431,4 +505,3 @@ int main(){
         }
     } 
 }
-
